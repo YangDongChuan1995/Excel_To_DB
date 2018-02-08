@@ -1,0 +1,199 @@
+﻿<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1"/>
+    <title>Excel 数据同步</title>
+    <link rel="stylesheet" type="text/css" th:href="@{/layui/css/layui.css}"/>
+</head>
+<body>
+<!-- 为ECharts准备一个具备大小（宽高）的Dom -->
+<div id="echartsMain" style="width: 1918px; height: 904px;"></div>
+</body>
+
+<script th:src="@{/layui/layui.all.js}"></script>
+<script th:src="@{/jquery/jquery.min.js}"></script>
+<script th:src="@{/echarts/js/echarts.js}"></script>
+<script th:src="@{/echarts/js/dark.js}"></script>
+<script>
+    // 使用刚指定的配置项和数据显示图表。
+    var myChart = echarts.init(document.getElementById('echartsMain'), 'dark');
+    myChart.showLoading();
+    $.ajax({
+        url: "/getResultData",
+        type: "GET",
+        success: function (data) {
+            myChart.hideLoading();
+            buildEcharts(data);
+        }
+    })
+
+    function buildEcharts(data) {
+        var resultData = data.data;
+        myChart.setOption({
+            title: {
+                text: '数据同步结果统计图',
+                subtext: 'Excel表格导入数据库',
+                x: 'center',
+                textStyle: {
+                    fontWeight: 'bold',
+                    fontSize: 25
+                },
+                subtextStyle: {
+                    fontSize: 16
+                }
+
+            },
+            tooltip: {
+                trigger: 'item',
+                formatter: "{a} {b} :{d}%",
+                textStyle: {
+                    fontWeight: 'bold',
+                    fontSize: 14
+                }
+            },
+            legend: {
+                itemWidth: 100,
+                itemHeight: 30,
+                orient: 'vertical',
+                left: 'left',
+                data: ['通过', '未通过'],
+                textStyle: {
+                    padding: 5,
+                    fontSize: 20
+                }
+            },
+            toolbox: {
+                show: true,
+                orient: 'vertical',
+                left: 'right',
+                top: 'center',
+                feature: {
+                    dataView: {readOnly: false},
+                    restore: {},
+                    saveAsImage: {}
+                }
+            },
+            grid: [
+                {x: '7.5%', y: '65%', width: '88%', height: '30%'},
+            ],
+            xAxis: [
+                {
+                    gridIndex: 0,
+                    type: 'category',
+                    axisTick: {
+                        alignWithLabel: true
+                    },
+                    axisLabel: {
+                        show: true,
+                        textStyle: {
+                            fontSize: '15'
+                        }
+                    },
+                    data: ['数据格式校验结果', ' ', '数据导入数据库结果']
+                },
+
+            ],
+            yAxis: [
+                {gridIndex: 0, name: '学科', show: false},
+            ],
+            series: [
+                {
+                    name: '数据同步结果概览',
+                    type: 'pie',
+                    //roseType:'radius',
+                    radius: '45%',
+                    center: ['50%', '33%'],
+                    data: [
+                        {value: resultData.succToDBSize, name: '通过'},
+                        {value: resultData.failToDBSize + resultData.failSize, name: '未通过'}
+                    ],
+                    label: {
+                        normal: {
+                            formatter: '{a} :{b} {c}条',
+                            textStyle: {
+                                color: '#ffffff',
+                                fontSize: 14
+                            }
+                        }
+                    },
+                    itemStyle: {
+                        emphasis: {
+                            shadowBlur: 10,
+                            shadowOffsetX: 0,
+                            shadowColor: 'rgba(0, 0, 0, 0.5)'
+                        }
+                    }
+                },
+                {
+                    name: '数据格式校验结果',
+                    type: 'pie',
+                    //roseType:'radius',
+                    radius: '22%',
+                    center: ['22%', '81%'],
+                    data: [
+                        {value: resultData.succSize, name: '通过'},
+                        {value: resultData.failSize, name: '未通过'}
+                    ],
+                    label: {
+                        normal: {
+                            formatter: '{c}条',
+                            textStyle: {
+                                color: '#ffffff',
+                                fontSize: 14
+                            }
+                        }
+                    },
+                    itemStyle: {
+                        emphasis: {
+                            shadowBlur: 10,
+                            shadowOffsetX: 0,
+                            shadowColor: 'rgba(0, 0, 0, 0.5)'
+                        }
+                    }
+                },
+                {
+                    name: '数据导入数据库结果',
+                    type: 'pie',
+                    //roseType:'radius',
+                    radius: '22%',
+                    center: ['80%', '81%'],
+                    data: [
+                        {value: resultData.succToDBSize, name: '通过'},
+                        {value: resultData.failToDBSize, name: '未通过'}
+                    ],
+                    label: {
+                        normal: {
+                            formatter: '{c}条',
+                            textStyle: {
+                                color: '#ffffff',
+                                fontSize: 14
+                            }
+                        }
+                    },
+                    itemStyle: {
+                        emphasis: {
+                            shadowBlur: 10,
+                            shadowOffsetX: 0,
+                            shadowColor: 'rgba(0, 0, 0, 0.5)'
+                        }
+                    }
+                },
+
+            ], color: ['#8dc1a9', '#dd6b66']
+        })
+        myChart.on('click', function (params) {
+            // 也就是从上往下，从左往右 第二个图
+            if (params.seriesIndex == 1) {
+                layer.msg("正在导出格式校验未通过的数据，请稍等...", {icon: 1});
+                window.location.href = "/doExport?failTypeName=format";
+            } else if (params.seriesIndex == 2) { //第三个图
+                layer.msg("正在导出同步数据库未通过的数据，请稍等...", {icon: 1});
+                window.location.href = "/doExport?failTypeName=db";
+            } else {
+                layer.alert("点击左右子图表可分别下载对应未通过的数据....", {icon: 6});
+            }
+        });
+    }
+</script>
+</html>

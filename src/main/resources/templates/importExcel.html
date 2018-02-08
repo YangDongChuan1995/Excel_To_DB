@@ -1,0 +1,221 @@
+﻿<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1"/>
+    <title>Excel 数据同步</title>
+    <link rel="stylesheet" type="text/css" th:href="@{/layui/css/layui.css}"/>
+    <style type="text/css">
+        .layui-upload-drag {
+            position: relative;
+            padding: 258px;
+            border: 25px dashed #e2e2e2;
+            background-color: #fff;
+            text-align: center;
+            cursor: pointer;
+            color: #999;
+            font-size: 35px;
+        }
+
+        .layui-elem-field legend {
+            margin-left: 278px;
+            padding: 0 10px;
+            font-size: 52px;
+            font-weight: 300;
+        }
+
+        .layui-upload-drag .layui-icon {
+            font-size: 86px;
+            color: #009688;
+        }
+    </style>
+</head>
+<body class="layui-layout-body">
+<div class="layui-layout layui-layout-admin">
+    <div class="layui-header">
+        <div class="layui-logo">Excel 数据同步</div>
+        <!-- 头部区域（可配合layui已有的水平导航） -->
+        <ul class="layui-nav layui-layout-left">
+            <li class="layui-nav-item"><a href="#">富强民主</a></li>
+            <li class="layui-nav-item"><a href="#">文明和谐</a></li>
+            <li class="layui-nav-item"><a href="#">自由平等</a></li>
+            <li class="layui-nav-item"><a href="#">公正法治</a></li>
+            <li class="layui-nav-item"><a href="#">爱国敬业</a></li>
+            <li class="layui-nav-item"><a href="#">诚信友善</a></li>
+            <li class="layui-nav-item">
+                <a href="javascript:;">坚定不移跟党走</a>
+                <dl class="layui-nav-child">
+                    <dd><a href="#">以经济建设为中心</a></dd>
+                    <dd><a href="#">坚持四项基本原则</a></dd>
+                </dl>
+            </li>
+        </ul>
+        <ul class="layui-nav layui-layout-right">
+            <li class="layui-nav-item">
+                <a href="javascript:;">
+                    <img  th:src="@{/image/profile_photo.jpg}" class="layui-nav-img"/>
+                    杨东川
+                </a>
+                <dl class="layui-nav-child">
+                    <dd><a href="#">杨东川</a></dd>
+                    <dd><a href="#">2018年2月3日</a></dd>
+                </dl>
+            </li>
+        </ul>
+    </div>
+    <div class="layui-side layui-bg-black">
+        <div class="layui-side-scroll">
+            <!-- 左侧导航区域（可配合layui已有的垂直导航） -->
+            <ul class="layui-nav layui-nav-tree" lay-filter="test">
+                <li class="layui-nav-item" id="importButtun"><a href="#" onclick="refresh();">Excel 导入</a></li>
+                <li class="layui-nav-item"><a href="#" onclick="exportExcelDemo();">Excel 模板下载</a></li>
+                <li class="layui-nav-item"><a href="/druid/login.html" target="_blank">Druid连接池监视</a></li>
+            </ul>
+        </div>
+    </div>
+    <div class="layui-body">
+        <!-- 内容主体区域 -->
+        <div id="fileField" style="padding: 5px;padding-left: 5px;" align="center">
+            <fieldset class="layui-elem-field layui-field-title" align="center">
+                <legend>拖拽上传</legend>
+            </fieldset>
+            <div class="layui-upload-drag" id="test10">
+                <i class="layui-icon" style="font-size:110px"></i>
+                <p>点击上传，或将文件拖拽到此处</p>
+            </div>
+
+        </div>
+    </div>
+    <div class="layui-footer" align="center">
+        <!-- 底部固定区域 -->
+        copyright @2018 www.ydc-coding.com
+    </div>
+</div>
+</body>
+<script th:src="@{/layui/layui.all.js}"></script>
+<script th:src="@{/jquery/jquery.min.js}"></script>
+<script>
+    // 首次进入默认触发[Excel 导入]
+    $("#importButtun").trigger("click");
+    // JavaScript代码区域
+    layui.use('element', function () {
+        var element = layui.element;
+    });
+    layui.use('upload', function () {
+        var $ = layui.jquery
+            , upload = layui.upload;
+        //拖拽上传
+        upload.render({
+            elem: '#test10'
+            , url: '/doImport/'
+            , method: 'post' //默认就是post
+            , accept: 'file'
+            , size: 20 * 1024
+            , before: function (obj) { //obj参数包含的信息，跟 choose回调完全一致，可参见上文。
+                layer.load(); //上传loading
+            }
+            , done: function (res, index, upload) {
+                layer.closeAll('loading'); //关闭loading
+                //假设code=0代表上传成功
+                if (res.code == 0) {
+                    // 0 : 上传文件格式通过
+                    if (res.data.code == 0) {
+                        //询问框
+                        layer.confirm(res.data.msg, {
+                            icon: 6,
+                            title: '恭喜您，数据上传成功！',
+                            btn: ['需要', '不需要'] //按钮
+                        }, function () {
+                            checkUndoSize();
+                        }, function () {
+                            layer.confirm('真的不需要查看数据同步结果吗？', {
+                                icon: 3,
+                                time: 10000, //20s后自动关闭
+                                btn: ['查看结果', '是的，不需要']
+                            }, function () {
+                                checkUndoSize();
+                            }, function () {
+                                layer.msg('不开心...', {icon: 5});
+                            });
+                        });
+                    } else { // 50X: 上传文件格式未通过(报异常时)
+                        layer.alert(res.data.msg, {icon: 5});
+                    }
+                } else {
+                    layer.alert("当前系统有误，请尝试与管理员联系", {icon: 5});
+                }
+            }
+            , error: function (index, upload) {
+                layer.closeAll('loading'); //关闭loading
+                layer.alert("当前系统有误，请尝试与管理员联系", {icon: 5});
+            }
+        });
+    });
+
+    // 检测未被消费的数据大小
+    function checkUndoSize() {
+        layer.load();
+        $.ajax({
+            url: "/getUndoSize",
+            type: "GET",
+            success: function (data) {
+                if (data.code == 0) {
+                    var result = data.data;
+                    if (result > 0) {//继续轮询
+                        layer.closeAll();
+                        layer.msg("当前仍有" + result + "条数据未处理，请稍等...");
+                        setTimeout(function () {
+                            checkUndoSize();
+                        }, 1000);
+                    } else {
+                        layer.closeAll('loading'); //关闭loading
+                        layer.confirm("数据同步已完成，是否立即查看结果？", {icon: 1, btn: ["立即查看", "稍等"]},
+                            function () {
+                                layer.closeAll();
+                                toResultHtml();
+                            },
+                            function () {
+                                layer.msg("五秒后再次提醒...", {icon: 6});
+                                setTimeout(function () {
+                                    checkUndoSize();
+                                }, 5000);
+                            });
+                    }
+                } else {
+                    layer.msg(data.msg);
+                }
+            },
+            error: function () {
+                layer.msg("客户端请求有误");
+            }
+        });
+    }
+
+    // 跳转至同步结果页面
+    function toResultHtml() {
+        var index = layer.open({
+            type: 2,
+            content: '/toResult',
+            area: ['320px', '195px'],
+            maxmin: true
+        });
+        layer.full(index);
+    }
+
+    // 刷新Excel导入页面
+    function refresh() {
+        layer.confirm("刷新页面后，未保存的数据将会丢失<br/>是否确认刷新？", {icon: 3, btn: ["确认", "取消"]},
+            function () {
+                window.location.href = "/toImport";
+            },
+            function () {
+            });
+    }
+
+    // 导出Excel
+    function exportExcelDemo() {
+        layer.msg("正在导出Excel数据格式模板，请稍等...", {icon: 1});
+        window.location.href = "/doExport?failTypeName=excelDemo";
+    }
+</script>
+</html>
